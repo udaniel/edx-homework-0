@@ -52,7 +52,7 @@ edx <- rbind(edx, removed)
 
 rm(dl, ratings, movies, test_index, temp, movielens, removed)
 
-
+# basic data analysis
 edx %>% class()
 dim(edx)
 head(edx)
@@ -183,6 +183,7 @@ rmse_results <- tibble(
 mu_hat
 rmse_results %>% kable()
 
+# calculate movie effect
 mu <- mean(train_set$rating)
 movie_avgs <- train_set %>% 
     group_by(movieId) %>% 
@@ -190,6 +191,7 @@ movie_avgs <- train_set %>%
 
 qplot(b_i, data = movie_avgs, bins = 10, color = I("black"))
 
+# predict
 predicted_ratings <- mu + test_set %>% 
     left_join(movie_avgs, by = "movieId") %>% 
     pull(b_i)
@@ -223,6 +225,7 @@ rmse_results <-
     ))
 rmse_results %>% kable()
 
+# regularization
 # cross-validation
 
 lambdas <- seq(0, 10, 0.5)
@@ -253,7 +256,7 @@ qplot(lambdas, rmses)
 lambdas <- seq(0, 1, 0.1)
 rmses <- sapply(lambdas, lambda_look, train_set = train_set, test_set = test_set)
 qplot(lambdas, rmses)
-lambdas[which.min(rmses)]
+lambdas[which.min(rmses)] # the best lambda
 
 l <- 0.4
 mu <- mean(train_set$rating)
@@ -266,6 +269,7 @@ b_u <- train_set %>%
     group_by(userId) %>% 
     summarise(b_u = sum(rating - mu - b_i) / (n() + l))
 
+# predict
 predicted_ratings <- 
     test_set %>% 
     left_join(b_i, by = "movieId") %>% 
@@ -281,6 +285,7 @@ rmse_results <-
     ))
 rmse_results %>% kable()
 
+# Matrix factorization
 library(recosystem)
 set.seed(123)
 train_data <- with(train_set,
@@ -296,6 +301,7 @@ r <- recosystem::Reco()
 
 # we perform without extra tuning process for the sake of simplicity
 r$train(train_data, opts = c(niter = 60))
+# predict
 y_hat_reco <- r$predict(test_data, out_memory())
 rmse_results <- bind_rows(rmse_results,
                           tibble(
@@ -304,6 +310,7 @@ rmse_results <- bind_rows(rmse_results,
                           ))
 rmse_results %>% kable()
 
+####### Validation #######
 # Since we finished finding our hyperparameter, lambda, we can use the whole edx set from now on.
 mu_final <- mean(edx$rating)
 
@@ -320,6 +327,7 @@ b_u_final <-
     group_by(userId) %>% 
     summarise(b_u_final = sum(rating - mu_final - b_i_final) / (n() + l))
 
+# predict
 pred_validation <- 
     validation %>% 
     left_join(b_i_final, by = "movieId") %>% 
@@ -336,8 +344,10 @@ rmse_results <-
             RMSE = RMSE_validation_regularized
         )
     )
+# rmse
 rmse_results %>% kable()
 
+# Matrix factorization
 set.seed(123)
 train_data <- with(edx,
                    data_memory(user_index = userId,
@@ -358,4 +368,5 @@ rmse_results <- bind_rows(rmse_results,
                               method = "Matrix Factorization (validation)",
                               RMSE = RMSE(y_hat_reco, validation$rating)
                           ))
+# final rmse
 rmse_results %>% kable()
